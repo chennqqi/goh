@@ -8,7 +8,7 @@ package goh
 import (
 	"errors"
 	"fmt"
-	_ "github.com/sdming/goh/Hbase"
+	_ "github.com/chennqqi/goh/Hbase"
 	"thrift"
 )
 

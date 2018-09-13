@@ -2,7 +2,7 @@ package goh
 
 import (
 	"fmt"
-	"github.com/sdming/goh/Hbase"
+	"github.com/chennqqi/goh/Hbase"
 	"net"
 	"net/url"
 	"thrift"

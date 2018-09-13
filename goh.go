@@ -8,7 +8,7 @@ package goh
 import (
 	"errors"
 	"fmt"
-	"github.com/sdming/goh/thrift" // will replace it later
+	"github.com/chennqqi/goh/thrift" // will replace it later
 )
 
 /*

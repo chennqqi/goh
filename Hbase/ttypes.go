@@ -6,7 +6,7 @@ package Hbase
 
 import (
 	"fmt"
-	"github.com/sdming/goh/thrift"
+	"github.com/chennqqi/goh/thrift"
 	"math"
 )
 
