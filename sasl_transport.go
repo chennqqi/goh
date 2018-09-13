@@ -104,7 +104,7 @@ func (p *TSaslTransport) Open() (err error) {
 			}
 			break
 		} else {
-			return thrift.NewTTransportExceptionFromError(fmt.Errorf("Bad SASL negotiation status: %d (%s)", status, challenge))
+			return thrift.NewTTransportExceptionFromOsError(fmt.Errorf("Bad SASL negotiation status: %d (%s)", status, challenge))
 		}
 	}
 	return nil
@@ -127,7 +127,7 @@ func (p *TSaslTransport) sendSaslMsg(ctx context.Context, status uint8, body []b
 		return err
 	}
 
-	err = p.tp.Flush(ctx)
+	err = p.tp.Flush()
 	if err != nil {
 		return err
 	}
@@ -187,14 +187,14 @@ func (p *TSaslTransport) Read(buf []byte) (l int, err error) {
 
 	/*
 		if p.readBuf.Len() > 0 {
-			err = thrift.NewTTransportExceptionFromError(fmt.Errorf("Not enough frame size %d to read %d bytes", p.frameSize, totalBytes))
+			err = thrift.NewTTransportExceptionFromOsError(fmt.Errorf("Not enough frame size %d to read %d bytes", p.frameSize, totalBytes))
 			return
 		}
 	*/
 	if p.frameSize < 0 {
 		return 0, thrift.NewTTransportException(thrift.UNKNOWN_TRANSPORT_EXCEPTION, "Negative frame size")
 	}
-	return got, thrift.NewTTransportExceptionFromError(err)
+	return got, thrift.NewTTransportExceptionFromOsError(err)
 }
 
 func (p *TSaslTransport) readFrameHeader() (uint32, error) {
@@ -211,14 +211,14 @@ func (p *TSaslTransport) readFrameHeader() (uint32, error) {
 
 func (p *TSaslTransport) Write(buf []byte) (int, error) {
 	n, err := p.writeBuf.Write(buf)
-	return n, thrift.NewTTransportExceptionFromError(err)
+	return n, thrift.NewTTransportExceptionFromOsError(err)
 }
 
 // Flush the bytes in the buffer
-func (p *TSaslTransport) Flush(ctx context.Context) (err error) {
+func (p *TSaslTransport) Flush() (err error) {
 	wrappedBuf, err := p.saslClient.Encode(p.writeBuf.Bytes())
 	if err != nil {
-		return thrift.NewTTransportExceptionFromError(err)
+		return thrift.NewTTransportExceptionFromOsError(err)
 	}
 
 	p.writeBuf.Reset()
@@ -229,20 +229,39 @@ func (p *TSaslTransport) Flush(ctx context.Context) (err error) {
 	_, err = p.tp.Write(buf)
 
 	if err != nil {
-		return thrift.NewTTransportExceptionFromError(err)
+		return thrift.NewTTransportExceptionFromOsError(err)
 	}
 
 	if size > 0 {
 		if n, err := p.tp.Write(wrappedBuf); err != nil {
 			print("Error while flushing write buffer of size ", size, " to transport, only wrote ", n, " bytes: ", err.Error(), "\n")
-			return thrift.NewTTransportExceptionFromError(err)
+			return thrift.NewTTransportExceptionFromOsError(err)
 		}
 	}
-	err = p.tp.Flush(ctx)
-	return thrift.NewTTransportExceptionFromError(err)
+
+	err = p.tp.Flush()
+	return thrift.NewTTransportExceptionFromOsError(err)
+}
+
+/**
+ * Guarantees that all of len bytes are actually read off the transport.
+ *
+ * @param buf Array to read into
+ * @param off Index to start reading at
+ * @param len Maximum number of bytes to read
+ * @return The number of bytes actually read, which must be equal to len
+ * @return TTransportException if there was an error reading data
+ */
+func (p *TSaslTransport) ReadAll(buf []byte) (n int, err error) {
+	//TODO:
+	return thrift.ReadAllTransport(p, buf)
 }
 
 // RemainingBytes return the size of the unwrapped bytes
 func (p *TSaslTransport) RemainingBytes() uint64 {
 	return uint64(p.frameSize)
+}
+
+func (p *TSaslTransport) Peek() bool {
+	return p.frameSize > 0
 }

@@ -3,6 +3,7 @@ package goh
 import (
 	"net"
 	"net/url"
+	"strings"
 
 	"github.com/chennqqi/goh/Hbase"
 	"github.com/chennqqi/goh/thrift" // will replace it later
@@ -63,20 +64,32 @@ func NewTcpClient(rawaddr string, protocol int, framed bool) (client *HClient, e
 	return newClient(tcpAddr.String(), protocol, trans)
 }
 
-func NewSaslClient(rawaddr string, protocol int) (client *HClient, err error) {
+/*
+NewSaslClient return a base tcp client instance
+configuration:
+	"mechanism": PLAIN/LDAP/NONE/CUSTOM/KERBEROS
+	"service": KERBEROS principle service
+	"username": username
+	"password": password
+*/
+func NewSaslClient(rawaddr string, protocol int, configuration map[string]string) (client *HClient, err error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", rawaddr)
 	if err != nil {
 		return
 	}
+	host := strings.Split(rawaddr, ":")[0]
 
 	var trans thrift.TTransport
 	trans, err = thrift.NewTNonblockingSocketAddr(tcpAddr)
 	if err != nil {
 		return
 	}
-	trans = thrift.NewTFramedTransport(trans)
-
-	return newClient(tcpAddr.String(), protocol, trans)
+	mechanismName := configuration["mechanism"]
+	ntrans, err := NewTSaslTransport(trans, host, mechanismName, configuration)
+	if err != nil {
+		return
+	}
+	return newClient(tcpAddr.String(), protocol, ntrans)
 }
 
 /*
